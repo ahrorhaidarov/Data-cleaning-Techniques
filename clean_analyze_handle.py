@@ -4,20 +4,6 @@ import pandas as pd
 from pandas.api.types import CategoricalDtype
 
 
-def convert_to_bool(value):
-    if pd.isnull(value):
-        return pd.NA
-    if isinstance(value, str):
-        value = value.lower()
-        if value in ['true', 'yes']:
-            return True
-        elif value in ['false', 'no']:
-            return False
-    elif value in [1, 0]:
-        return bool(value)
-    return value
-
-
 def infer_and_convert_dtypes(row_data: pd.DataFrame, n_category: int = 10) -> pd.DataFrame:
     """
     Infers the best data type for each column in a DataFrame and converts it,
@@ -49,14 +35,10 @@ def infer_and_convert_dtypes(row_data: pd.DataFrame, n_category: int = 10) -> pd
         unique_values = col_data.dropna().unique()
         unique_count = len(unique_values)
 
-        # Check for boolean values
-        if col_data.dropna().astype(str).str.lower().isin(
-                ['true', 'false', 'yes', 'no']).all() or col_data.dropna().isin([0, 1]).all():
-            row_data[column] = col_data.apply(convert_to_bool)
 
 
                 # Check for datetime
-        elif pd.api.types.is_string_dtype(col_data):
+        if pd.api.types.is_string_dtype(col_data):
             try:
                 row_data[column] = pd.to_datetime(col_data)
             except (ValueError, TypeError):
@@ -69,15 +51,16 @@ def infer_and_convert_dtypes(row_data: pd.DataFrame, n_category: int = 10) -> pd
             else:
                 row_data[column] = col_data.astype('float' if col_data.dtype.kind in 'fc' else 'int')
 
-            # Check for categorical data
-        elif unique_count <= n_category:
+        else:
+            row_data[column] = row_data[column].astype(str)
+
+                # Check for categorical data
+        if unique_count <= n_category and pd.api.types.is_object_dtype(col_data):
             if pd.api.types.is_string_dtype(col_data):
                 ordered_values = sorted(unique_values)
                 row_data[column] = col_data.astype(CategoricalDtype(categories=ordered_values, ordered=True))
             else:
                 row_data[column] = col_data.astype('category')
-        else:
-            row_data[column] = col_data.astype('object')
 
     return row_data
 
@@ -250,4 +233,43 @@ def handle_missing_values(raw_data: pd.DataFrame, break_list: list = [], thresho
         else:
             print('Can not handle!!!')
 
+
     return raw_data
+
+
+if __name__ == '__main__':
+    data = {
+        'col1': ['yes', 'no', None, None, 'yes', 'yes', 'no', 'no', None, 'no'],
+        'col2': ['a', None, 'c', 'a', 'b', 'c', 'a', 'b', None, 'a'],
+        'col3': [1, 2, None, 2, 3, 1, 2, 3, None, 2],
+        'col4': [True, None, True, True, False, None, True, True, False, None],
+        'col5': [2.5, None, 2.9, 3.5, 2.7, 3.2, 2.9, 3.4, None, 3.3],
+        'col6': ['2021-07-01', '2021-07-02', None, '2021-07-04', '2021-07-05', '2021-07-06', None, None, '2021-07-09',
+                 '2021-07-10'],
+        'col7': [None, None, None, None, None, None, None, None, None, None]
+    }
+    df = pd.DataFrame(data)
+    df.info()
+
+    # Step 1
+    # Describe the row data
+    df_after_description = describe(df)
+    print(df_after_description)
+
+    # Step 2
+    # Analyze dtypes of row data and convert it to correct dtype if it's possible
+    df_after_conversion = infer_and_convert_dtypes(df)
+    print('Before conversion:')
+    df.info()
+    print('After conversion:')
+    df_after_conversion.info()
+
+    # Step 3
+    # Analyze of row data with plots
+    analize_plot(df_after_conversion, df_after_conversion.columns[1:])
+
+    # Step 4
+    # Analyze missing values and handle it if possible
+    df_after_conversion.isna().sum()
+    df_after_handling = handle_missing_values(df_after_conversion)
+    df_after_handling.info()
