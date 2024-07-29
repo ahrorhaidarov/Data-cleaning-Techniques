@@ -185,10 +185,11 @@ def has_outliers(df, column):
     return not outliers.empty
 
 
-def handle_missing_values(raw_data: pd.DataFrame, break_list: list = [], threshold: int = 0.5) -> pd.DataFrame:
+def handle_missing_values(raw_data: pd.DataFrame, only_columns: list = [], break_list: list = [], threshold: int = 0.5) -> pd.DataFrame:
     """
     Обрабатывает пропущенные значения в DataFrame в зависимости от типа данных и наличия выбросов.
 
+    :param only_columns: список столбцов, которые нужно обрабатывать
     :param raw_data: исходный DataFrame
     :param break_list: список столбцов, которые не нужно обрабатывать
     :param threshold: пороговое значение для пропусков
@@ -207,8 +208,14 @@ def handle_missing_values(raw_data: pd.DataFrame, break_list: list = [], thresho
     print(handled_df)
     """
 
+    global columns
     raw_data = raw_data.copy()
-    for column in raw_data.drop(break_list, axis=1).columns:
+    if break_list:
+        columns = raw_data.drop(break_list, axis=1).columns
+    elif only_columns:
+        columns = raw_data[only_columns].columns
+
+    for column in columns:
         col_data = raw_data[column]
 
         if check_missing_rate(raw_data, column, threshold):
