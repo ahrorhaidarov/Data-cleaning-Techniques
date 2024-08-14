@@ -55,7 +55,7 @@ def infer_and_convert_dtypes(row_data: pd.DataFrame, n_category: int = 10) -> pd
             row_data[column] = row_data[column].astype(str)
 
                 # Check for categorical data
-        if unique_count <= n_category and pd.api.types.is_object_dtype(col_data):
+        if unique_count <= n_category:
             if pd.api.types.is_string_dtype(col_data):
                 ordered_values = sorted(unique_values)
                 row_data[column] = col_data.astype(CategoricalDtype(categories=ordered_values, ordered=True))
